@@ -2,7 +2,7 @@
   "name": "luno-automation-frontend",
   "productName": "LUNO Automation",
   "private": true,
-  "version": "0.1.0",
+  "version": "0.1.1",
   "type": "module",
   "main": "electron/main.cjs",
   "scripts": {

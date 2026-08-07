@@ -37,8 +37,13 @@ function startBackend() {
     const serverScript = path.join(__dirname, '..', '..', 'backend', 'server.py');
     backendProcess = spawn(pythonPath, [serverScript], { stdio: 'inherit', env });
   } else {
+    // luno-backend.exe được build với console=True (xem backend/server.spec) -
+    // giữ nguyên console=True (không đổi sang windowed) để print()/log Python
+    // không có rủi ro lỗi ghi stdout khi không có console thật. Thay vào đó
+    // dùng windowsHide để Windows KHÔNG hiện cửa sổ console đó ra cho user
+    // thấy, dù tiến trình vẫn có console/stdio hoạt động bình thường bên trong.
     const backendExe = resolvePackagedBackend();
-    backendProcess = spawn(backendExe, [], { stdio: 'inherit', env });
+    backendProcess = spawn(backendExe, [], { stdio: 'inherit', env, windowsHide: true });
   }
 
   backendProcess.on('error', (err) => {
