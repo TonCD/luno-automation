@@ -1,12 +1,12 @@
 # LUNO Automation — Frontend
 
-Electron + React + TypeScript + Vite. Xem tài liệu đầy đủ (kiến trúc, cài đặt, sử dụng) ở
-[README.md gốc của repo](../README.md).
+Electron + React + TypeScript + Vite. See the full docs (architecture, setup, usage) in the
+[repo's root README](../README.md) ([Vietnamese](../README.vi.md)).
 
-Lệnh hay dùng (chạy trong thư mục này):
+Common commands (run from this folder):
 
 ```
 npm install
-npm run electron:dev    # chạy dev (cần backend/.venv đã cài xong - xem README gốc)
-npm run electron:build  # đóng gói thành installer Windows (.exe)
+npm run electron:dev    # dev mode (needs backend/.venv set up first - see root README)
+npm run electron:build  # package into a Windows installer (.exe)
 ```
