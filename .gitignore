@@ -1,0 +1,50 @@
+# =============================================================================
+# LUNO Automation - .gitignore
+# Xem README.md mục "Bảo mật & dữ liệu không public" để biết lý do từng nhóm.
+# =============================================================================
+
+# ---- Python (backend/) ----
+**/__pycache__/
+*.pyc
+backend/.venv/
+backend/build/
+backend/dist/
+
+# ---- Tài khoản / session / cookie / log (DỮ LIỆU CÁ NHÂN - không bao giờ commit) ----
+backend/accounts/
+backend/shopee_accounts/
+backend/*cookie*.txt
+backend/*session_state*.json
+backend/*_state.json
+backend/*_draft.json
+backend/*.csv
+
+# ---- Ảnh bìa Grid Layout đã cắt + ảnh nguồn cá nhân + video mẫu ----
+backend/covers/
+backend/grid_covers/
+backend/grid_source/
+backend/sample_video.mp4
+backend/sample_videos/
+
+# ---- Node / Electron (frontend/) ----
+frontend/node_modules/
+frontend/dist/
+frontend/dist-ssr/
+frontend/release/
+*.local
+
+# ---- Ghi chú phát triển riêng tư (không phải tài liệu công khai) ----
+TIKTOK_UPLOAD_PLAN.md
+frontend/ARCHITECTURE.md
+captured_html/
+
+# ---- OS / editor ----
+.DS_Store
+.vscode/*
+!.vscode/extensions.json
+.idea
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
