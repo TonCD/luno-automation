@@ -26,7 +26,7 @@ hiddenimports = []
 # collect_all thay vì tự liệt kê hidden-imports/data files thủ công - Playwright
 # đặc biệt cần cả thư mục "driver" (driver Node.js đóng gói sẵn bên trong gói
 # pip playwright) mới chạy được, dễ thiếu nếu tự liệt kê tay.
-for pkg in ('playwright', 'fastapi', 'uvicorn', 'starlette', 'pydantic', 'pydantic_core'):
+for pkg in ('playwright', 'fastapi', 'uvicorn', 'starlette', 'pydantic', 'pydantic_core', 'websockets'):
     d, b, h = collect_all(pkg)
     datas += d
     binaries += b
