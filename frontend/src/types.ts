@@ -94,5 +94,9 @@ export interface ProgressEvent {
   step?: string
   status?: 'success' | 'failed'
   error?: string
+  // 'moderation' = TikTok chặn đăng vì nội dung có thể vi phạm/bị hạn chế
+  // kiểm duyệt (khác lỗi kỹ thuật thường) - thử lại y hệt video đó nhiều khả
+  // năng vẫn bị chặn, UI dùng cờ này để gợi ý "chọn video thay thế".
+  error_type?: 'moderation' | string | null
   message?: string
 }

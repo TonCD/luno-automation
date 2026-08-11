@@ -572,6 +572,52 @@ export function TiktokFlow({ onBack }: { onBack: () => void }) {
     runJobs(failedEntries)
   }
 
+  // Video bị TikTok CHẶN vì kiểm duyệt nội dung (error_type='moderation') -
+  // khác lỗi kỹ thuật thường, thử lại y hệt file đó nhiều khả năng vẫn bị
+  // chặn giống hệt nên cần gợi ý đổi sang video khác thay vì chỉ "chạy lại".
+  const moderationFailedPaths = useMemo(
+    () =>
+      new Set(
+        progressLog
+          .filter((e) => e.type === 'video_done' && e.status === 'failed' && e.error_type === 'moderation')
+          .map((e) => e.video)
+          .filter((v): v is string => Boolean(v)),
+      ),
+    [progressLog],
+  )
+  const moderationFailedEntries = useMemo(
+    () => entries.filter((e) => moderationFailedPaths.has(e.path)),
+    [entries, moderationFailedPaths],
+  )
+
+  // Chọn video KHÁC thay cho 1 video bị chặn kiểm duyệt - giữ nguyên toàn bộ
+  // thông tin đã điền (mô tả, hashtag, lịch đăng, ảnh bìa, dB nhạc, có/không
+  // gắn sản phẩm,...) của entry cũ, chỉ đổi path/filename/number sang video
+  // mới. Đồng thời viết lại progressLog (đổi field "video" từ path cũ sang
+  // path mới) để failedPaths/failedEntries ở trên tự nhận diện đúng video đã
+  // thay - bấm "Chạy lại video lỗi" sau đó sẽ tự chạy đúng file mới, không
+  // cần thêm nút retry riêng cho trường hợp này.
+  async function handleReplaceVideo(oldPath: string) {
+    const paths = await window.luno.pickVideos()
+    if (!paths || paths.length === 0) return
+    setError(null)
+    try {
+      const res = await api.videosByPaths([paths[0]])
+      const info = res.videos[0]
+      if (!info) return
+      setEntries((prev) =>
+        prev.map((e) =>
+          e.path === oldPath
+            ? { ...e, path: info.path, filename: info.filename, number: info.number, alreadyDone: false }
+            : e,
+        ),
+      )
+      setProgressLog((prev) => prev.map((ev) => (ev.video === oldPath ? { ...ev, video: info.path } : ev)))
+    } catch (e) {
+      setError((e as Error).message)
+    }
+  }
+
   // Batch xong và KHÔNG còn video nào lỗi -> không còn gì để khôi phục, xoá
   // draft đã lưu (tránh lần mở app sau bị "khôi phục" nhầm 1 batch đã xong).
   useEffect(() => {
@@ -1502,6 +1548,37 @@ export function TiktokFlow({ onBack }: { onBack: () => void }) {
                 </Button>
               )}
             </div>
+
+            {batchDone && moderationFailedEntries.length > 0 && (
+              <Callout tone="warning" className="mt-5">
+                <div className="mb-2">
+                  {moderationFailedEntries.length} video bị TikTok <b>chặn vì kiểm duyệt nội dung</b>{' '}
+                  - thử lại y hệt file cũ nhiều khả năng vẫn bị chặn giống vậy. Chọn video khác thay
+                  thế cho từng video bên dưới (mô tả/hashtag/lịch/ảnh bìa/nhạc/sản phẩm đã điền vẫn
+                  giữ nguyên), rồi bấm "🔁 Chạy lại video lỗi" ở trên để đăng video mới.
+                </div>
+                <div className="space-y-2">
+                  {moderationFailedEntries.map((e) => (
+                    <div
+                      key={e.path}
+                      className="flex items-center justify-between gap-3 rounded-lg bg-white/60 dark:bg-black/20 px-3 py-2"
+                    >
+                      <span className="text-xs text-neutral-700 dark:text-neutral-300 truncate">
+                        #{e.number ?? '?'} {e.filename}
+                      </span>
+                      <Button
+                        variant="secondary"
+                        onClick={() => handleReplaceVideo(e.path)}
+                        disabled={running}
+                        className="shrink-0"
+                      >
+                        🎬 Chọn video thay thế
+                      </Button>
+                    </div>
+                  ))}
+                </div>
+              </Callout>
+            )}
 
             {batchId && (
               <div className="mt-5 rounded-xl bg-neutral-950 text-neutral-200 font-mono text-xs p-4 max-h-80 overflow-y-auto">

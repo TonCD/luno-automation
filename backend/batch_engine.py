@@ -125,10 +125,17 @@ def run_batch(
                 })
 
             except Exception as e:
-                tk.log_result(job.video_path, 'failed', error=str(e))
+                # Lỗi do TikTok chặn kiểm duyệt nội dung là loại lỗi RIÊNG -
+                # thử lại y hệt video đó nhiều khả năng vẫn bị chặn giống hệt
+                # (cùng nội dung), khác lỗi kỹ thuật thường (mạng chậm, lỗi
+                # selector,...) mà thử lại suông có thể qua được. Gắn cờ
+                # error_type để UI biết gợi ý "chọn video thay thế" đúng lúc.
+                error_type = 'moderation' if isinstance(e, tk.ContentModerationBlocked) else None
+                tk.log_result(job.video_path, 'failed', error=str(e), error_type=error_type)
                 on_progress({
                     'type': 'video_done', 'index': i, 'total': total,
                     'video': job.video_path, 'status': 'failed', 'error': str(e),
+                    'error_type': error_type,
                 })
 
             time.sleep(delay_between_posts)

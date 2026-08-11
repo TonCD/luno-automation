@@ -33,6 +33,17 @@ VN_MONTHS = [
     'Tháng Bảy', 'Tháng Tám', 'Tháng Chín', 'Tháng Mười', 'Tháng Mười Một', 'Tháng Mười Hai',
 ]
 
+
+class ContentModerationBlocked(Exception):
+    """TikTok chặn đăng vì nội dung có thể vi phạm/bị hạn chế kiểm duyệt (popup
+    "Nội dung có thể sẽ bị hạn chế" hiện ra thay vì đăng/lên lịch thành công -
+    xác nhận từ captured_html/tiktok_upload.html dòng 1357-1517). Raise RIÊNG
+    loại lỗi này (khác Exception kỹ thuật thường) để tầng trên (batch_engine,
+    app) phân biệt được: lỗi này do CHÍNH VIDEO bị TikTok đánh giá vi phạm -
+    thử lại y hệt video đó nhiều khả năng vẫn bị chặn giống hệt, cần đổi sang
+    video khác chứ không phải chạy lại suông."""
+    pass
+
 # ==================== CONFIG ====================
 CONFIG = {
     # Chuỗi cookie copy từ F12 (Network tab -> request headers -> "cookie:")
@@ -467,6 +478,46 @@ def add_music(page, pick_range, volume_db):
     print(f"  ✓ Đã thêm nhạc, target volume {volume_db}dB")
 
 
+def _dismiss_moderation_block(page):
+    """Kiểm tra TikTok có đang chặn đăng bằng popup "Nội dung có thể sẽ bị hạn
+    chế" hay không (xác nhận từ captured_html/tiktok_upload.html dòng
+    1357-1517 - hiện RA THAY VÌ đăng/lên lịch thành công khi bấm nút Đăng/Lưu
+    bản nháp). Trước đây bước chờ URL đổi trang chỉ timeout sau 45s rồi NUỐT
+    LỖI im lặng (except Exception: print cảnh báo, không raise) - khiến video
+    bị TikTok chặn vẫn được ghi nhận 'success' trong log dù thực ra chưa hề
+    đăng, và batch bị "đơ" giữa chừng chờ user tự bấm tay ngoài kịch bản.
+
+    Nếu thấy popup: tự đóng popup cảnh báo (KHÔNG bấm "Thay thế video" - việc
+    chọn video khác cần làm thủ công qua UI riêng của app, không tự động chọn
+    hộ được) -> bấm "Hủy bỏ" (discard_post_button) ở trang chính -> xác nhận
+    "Hủy bỏ" ở popup hỏi lại -> raise ContentModerationBlocked để tầng trên
+    (batch_engine) ghi nhận ĐÚNG nguyên nhân thất bại, khác lỗi kỹ thuật
+    thường. Nếu KHÔNG thấy popup trong thời gian chờ ngắn, trả về bình
+    thường (không phải bị chặn)."""
+    modal = page.locator('.TUXModal', has_text="Nội dung có thể sẽ bị hạn chế")
+    try:
+        modal.first.wait_for(state='visible', timeout=5000)
+    except Exception:
+        return  # không bị chặn - tiếp tục flow đăng bình thường
+
+    print("  ⚠ TikTok chặn đăng: nội dung có thể bị hạn chế kiểm duyệt - tự huỷ video này")
+    modal.first.locator('.common-modal-close').click()
+    page.wait_for_timeout(500)
+
+    page.locator('[data-e2e="discard_post_button"]').click()
+    page.wait_for_timeout(500)
+
+    # Popup xác nhận "Hủy bỏ bài đăng này?" - class riêng common-modal-confirm-modal
+    # (khác modal cảnh báo ở trên) để không nhầm nút "Hủy bỏ" giữa 2 popup.
+    confirm_modal = page.locator('.common-modal-confirm-modal')
+    confirm_modal.get_by_role("button", name="Hủy bỏ", exact=True).click()
+    page.wait_for_timeout(2000)
+
+    raise ContentModerationBlocked(
+        "TikTok chặn đăng - nội dung có thể vi phạm/bị hạn chế kiểm duyệt, cần đổi video khác"
+    )
+
+
 def publish(page):
     print("\n🚀 Đăng bài...")
     page.mouse.wheel(0, 3000)
@@ -475,6 +526,11 @@ def publish(page):
     # data-e2e="post_video_button" - selector chính xác, giữ nguyên label "Post"
     # bất kể chọn "Now" hay "Schedule"
     page.locator('[data-e2e="post_video_button"]').click()
+
+    # Kiểm tra popup chặn kiểm duyệt NGAY (không đợi hết 45s wait_for_url bên
+    # dưới rồi mới phát hiện) - raise ContentModerationBlocked nếu bị chặn,
+    # dừng hẳn ở đây (không chạy tiếp phần chờ URL đổi trang).
+    _dismiss_moderation_block(page)
 
     # Đợi TikTok xử lý xong submit trước khi làm gì tiếp (vd goto video kế tiếp
     # trong bulk_upload.py) - nếu điều hướng đi quá sớm lúc còn đang submit, có
@@ -504,6 +560,11 @@ def save_draft(page):
 
     page.locator('[data-e2e="save_draft_button"]').click()
 
+    # Cùng lý do như publish() - phòng trường hợp popup chặn kiểm duyệt cũng
+    # hiện ra khi lưu nháp (chưa xác nhận chắc chắn có xảy ra hay không, nhưng
+    # kiểm tra thêm ở đây an toàn hơn, tốn thêm tối đa 5s nếu không xảy ra).
+    _dismiss_moderation_block(page)
+
     try:
         page.wait_for_url(lambda url: '/upload' not in url, timeout=45000)
         print(f"  ✓ Đã lưu bản nháp - chuyển sang: {page.url}")
@@ -515,7 +576,7 @@ def save_draft(page):
 
 # ==================== LOG / CACHE ====================
 
-def log_result(video_path, status, error=None):
+def log_result(video_path, status, error=None, error_type=None):
     log_csv = Path(CONFIG['log_csv'])
     is_new = not log_csv.exists()
 
@@ -549,6 +610,7 @@ def log_result(video_path, status, error=None):
         'schedule_date': CONFIG['schedule_date'],
         'schedule_time': CONFIG['schedule_time'],
         'product_id': CONFIG['product_id'],
+        'error_type': error_type,  # vd 'moderation' - None với lỗi kỹ thuật thường/thành công
         'logged_at': time.strftime('%Y-%m-%d %H:%M:%S'),
     }
     state_file.write_text(json.dumps(state, ensure_ascii=False, indent=2), encoding='utf-8')
