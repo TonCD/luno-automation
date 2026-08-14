@@ -89,6 +89,13 @@ CONFIG = {
     'music_pick_range': (1, 8),
     'music_volume_db': -20,
 
+    # Tài khoản đang active (server.py's _apply_active_account() tự set trước
+    # mỗi batch - CHỈ để ghi log/state cho biết video đăng qua account nào khi
+    # có nhiều tài khoản, KHÔNG ảnh hưởng gì tới việc chọn cookie/session dùng
+    # để đăng nhập, việc đó vẫn qua cookie_file/session_state_file ở trên).
+    'account_id': None,
+    'account_label': None,
+
     # Log / cache
     'log_csv': BASE_DIR / 'tiktok_upload_log.csv',
     'state_json': BASE_DIR / 'tiktok_upload_state.json',
@@ -584,11 +591,13 @@ def log_result(video_path, status, error=None, error_type=None):
         writer = csv.writer(f)
         if is_new:
             writer.writerow(['video', 'schedule_date', 'schedule_time', 'product_id',
-                              'cover_second', 'status', 'error', 'logged_at'])
+                              'cover_second', 'status', 'error', 'logged_at',
+                              'account_id', 'account_label'])
         writer.writerow([
             str(video_path), CONFIG['schedule_date'], CONFIG['schedule_time'],
             CONFIG['product_id'], CONFIG['cover_second'], status, error or '',
             time.strftime('%Y-%m-%d %H:%M:%S'),
+            CONFIG['account_id'] or '', CONFIG['account_label'] or '',
         ])
 
     state_file = Path(CONFIG['state_json'])
@@ -611,6 +620,8 @@ def log_result(video_path, status, error=None, error_type=None):
         'schedule_time': CONFIG['schedule_time'],
         'product_id': CONFIG['product_id'],
         'error_type': error_type,  # vd 'moderation' - None với lỗi kỹ thuật thường/thành công
+        'account_id': CONFIG['account_id'],
+        'account_label': CONFIG['account_label'],
         'logged_at': time.strftime('%Y-%m-%d %H:%M:%S'),
     }
     state_file.write_text(json.dumps(state, ensure_ascii=False, indent=2), encoding='utf-8')

@@ -200,7 +200,11 @@ def _apply_active_account() -> Optional[str]:
     """Trỏ tk.CONFIG['cookie_file']/['session_state_file'] vào đúng tài khoản
     đang active. Gọi hàm này TRƯỚC MỌI thao tác cần session (check status,
     chạy batch) - phải gọi lại mỗi lần vì user có thể đổi active account giữa
-    các lần."""
+    các lần.
+
+    Đồng thời set tk.CONFIG['account_id']/['account_label'] - CHỈ để
+    log_result() ghi vào log/state biết video vừa đăng qua tài khoản nào (hữu
+    ích khi có nhiều tài khoản), không ảnh hưởng gì tới việc đăng nhập."""
     reg = _migrate_legacy_session_if_needed()
     active_id = reg.get('active_id')
     if not active_id:
@@ -208,6 +212,10 @@ def _apply_active_account() -> Optional[str]:
     acc_dir = ACCOUNTS_DIR / active_id
     tk.CONFIG['cookie_file'] = acc_dir / 'cookie.txt'
     tk.CONFIG['session_state_file'] = acc_dir / 'session.json'
+    tk.CONFIG['account_id'] = active_id
+    tk.CONFIG['account_label'] = next(
+        (a['label'] for a in reg['accounts'] if a['id'] == active_id), None
+    )
     return active_id
 
 
@@ -630,6 +638,10 @@ def _shopee_apply_active_account() -> Optional[str]:
     acc_dir = SHOPEE_ACCOUNTS_DIR / active_id
     sp.CONFIG['cookie_file'] = acc_dir / 'cookie.txt'
     sp.CONFIG['session_state_file'] = acc_dir / 'session.json'
+    sp.CONFIG['account_id'] = active_id
+    sp.CONFIG['account_label'] = next(
+        (a['label'] for a in reg['accounts'] if a['id'] == active_id), None
+    )
     return active_id
 
 

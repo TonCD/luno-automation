@@ -18,6 +18,7 @@ backend/*session_state*.json
 backend/*_state.json
 backend/*_draft.json
 backend/*.csv
+backend/tiktok_user_settings.json
 
 # ---- Ảnh bìa Grid Layout đã cắt + ảnh nguồn cá nhân + video mẫu ----
 backend/covers/

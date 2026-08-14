@@ -109,6 +109,12 @@ CONFIG = {
     'schedule_date': None,
     'schedule_time': None,
 
+    # Tài khoản đang active (server.py's _shopee_apply_active_account() tự set
+    # trước mỗi batch) - CHỈ để ghi log/state biết video đăng qua account nào,
+    # không ảnh hưởng gì tới việc chọn cookie/session dùng để đăng nhập.
+    'account_id': None,
+    'account_label': None,
+
     'log_csv': BASE_DIR / 'shopee_upload_log.csv',
     'state_json': BASE_DIR / 'shopee_upload_state.json',
 }
@@ -438,11 +444,13 @@ def log_result(video_path, status, error=None):
         writer = csv.writer(f)
         if is_new:
             writer.writerow(['video', 'schedule_date', 'schedule_time', 'product_query',
-                              'product_id', 'cover_ratio', 'status', 'error', 'logged_at'])
+                              'product_id', 'cover_ratio', 'status', 'error', 'logged_at',
+                              'account_id', 'account_label'])
         writer.writerow([
             str(video_path), CONFIG['schedule_date'], CONFIG['schedule_time'],
             CONFIG['product_query'], CONFIG['product_id'], CONFIG['cover_ratio'],
             status, error or '', time.strftime('%Y-%m-%d %H:%M:%S'),
+            CONFIG['account_id'] or '', CONFIG['account_label'] or '',
         ])
 
     state_file = Path(CONFIG['state_json'])
@@ -464,6 +472,8 @@ def log_result(video_path, status, error=None):
         'schedule_date': CONFIG['schedule_date'],
         'schedule_time': CONFIG['schedule_time'],
         'product_query': CONFIG['product_query'],
+        'account_id': CONFIG['account_id'],
+        'account_label': CONFIG['account_label'],
         'logged_at': time.strftime('%Y-%m-%d %H:%M:%S'),
     }
     state_file.write_text(json.dumps(state, ensure_ascii=False, indent=2), encoding='utf-8')
